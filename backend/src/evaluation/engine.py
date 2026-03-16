@@ -288,7 +288,7 @@ class EvaluationEngine:
                     output=agent_output,
                     context=context or "",
                     available_tools=", ".join(available_tools) or "none",
-                    tools_used=", ".join(tools_used) or "none",
+                    tools_used=", ".join(str(t) for t in tools_used if t) or "none",
                     system_prompt="",  # TODO: extract from span attributes
                 )
                 raw, cost = self._call_judge(prompt, model)

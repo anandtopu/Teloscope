@@ -57,8 +57,8 @@ class PIIRedactor:
             k: v for k, v in PATTERNS.items() if k in enabled_keys
         }
         # Optionally load Presidio for ML-based detection
-        self._presidio_analyzer = None
-        self._presidio_anonymizer = None
+        self._presidio_analyzer: Any = None
+        self._presidio_anonymizer: Any = None
         self._try_load_presidio()
 
     def _try_load_presidio(self) -> None:
@@ -79,10 +79,10 @@ class PIIRedactor:
 
         # 1. Regex patterns
         for pattern_name, pattern in self.active_patterns.items():
-            text = pattern.sub(
-                lambda m, pn=pattern_name: f"[{pn.upper()}_REDACTED]",
-                text,
-            )
+            def repl(m: re.Match[str], pn: str = pattern_name) -> str:
+                return f"[{pn.upper()}_REDACTED]"
+            
+            text = pattern.sub(repl, text)
 
         # 2. Presidio ML-based detection (if available)
         if self._presidio_analyzer:

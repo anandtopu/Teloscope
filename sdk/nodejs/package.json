@@ -8,10 +8,20 @@
     "test": "node --test tests/",
     "lint": "eslint ."
   },
-  "keywords": ["ai", "agents", "observability", "tracing", "llm", "opentelemetry"],
+  "keywords": [
+    "ai",
+    "agents",
+    "observability",
+    "tracing",
+    "llm",
+    "opentelemetry"
+  ],
   "license": "MIT",
-  "engines": { "node": ">=18.0.0" },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "devDependencies": {
+    "eslint": "^10.0.3",
     "typescript": "^5.0.0"
   }
 }

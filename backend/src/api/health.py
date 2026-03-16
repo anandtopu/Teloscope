@@ -1,13 +1,14 @@
 """Health check endpoints."""
 from datetime import datetime
 
+from typing import Any
 from fastapi import APIRouter
 
 router = APIRouter()
 
 
 @router.get("")
-async def health_check():
+async def health_check() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "agentlens-api",
@@ -17,7 +18,7 @@ async def health_check():
 
 
 @router.get("/ready")
-async def readiness_check():
+async def readiness_check() -> dict[str, Any]:
     """Kubernetes readiness probe — checks critical dependencies."""
     checks: dict = {}
     overall = "ok"

@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from clickhouse_driver import Client as SyncClient
+from clickhouse_driver import Client as SyncClient  # type: ignore
 
 from ..core.config import get_settings
 from ..core.logging import get_logger
@@ -189,7 +189,7 @@ class ClickHouseStorage:
         )
         logger.debug("Inserted spans", count=len(spans))
 
-    def get_spans_for_trace(self, trace_id: str, org_id: str) -> List[Dict[str, Any]]:
+    def get_spans_for_trace(self, trace_id: str, org_id: str) -> List[Any]:
         result = self.client.execute(
             f"""
             SELECT *
@@ -221,7 +221,7 @@ class ClickHouseStorage:
         end_before: Optional[datetime] = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Any]:
         conditions = ["org_id = %(org_id)s", "project_id = %(project_id)s"]
         params: Dict[str, Any] = {"org_id": org_id, "project_id": project_id}
 
@@ -312,7 +312,7 @@ class ClickHouseStorage:
         org_id: str,
         project_id: str,
         window_minutes: int = 60,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Any]:
         result = self.client.execute(
             f"""
             SELECT
@@ -338,7 +338,7 @@ class ClickHouseStorage:
         org_id: str,
         project_id: str,
         window_minutes: int = 1440,  # 24h default
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Any]:
         return self.client.execute(
             f"""
             SELECT
