@@ -1,0 +1,83 @@
+E402 Module level import not at top of file
+  --> src\api\__init__.py:44:1
+   |
+43 | # Write the actual files
+44 | import os
+   | ^^^^^^^^^
+45 |
+46 | api_dir = os.path.dirname(os.path.abspath(__file__))
+   |
+
+F401 [*] `..services.ingestion.get_ingestion_service` imported but unused
+  --> src\api\evaluations.py:42:38
+   |
+40 |     """
+41 |     from ..storage.clickhouse import get_storage
+42 |     from ..services.ingestion import get_ingestion_service
+   |                                      ^^^^^^^^^^^^^^^^^^^^^
+43 |     from ..models.trace import Trace, SpanStatus, FrameworkType, TokenUsage
+44 |     from datetime import datetime
+   |
+help: Remove unused import: `..services.ingestion.get_ingestion_service`
+
+F401 [*] `..api.traces._SPAN_COLUMNS` imported but unused
+  --> src\api\evaluations.py:56:46
+   |
+54 |     # Build minimal Trace object for evaluation
+55 |     # (in production, deserialize fully from ClickHouse)
+56 |     from ..api.traces import _TRACE_COLUMNS, _SPAN_COLUMNS
+   |                                              ^^^^^^^^^^^^^
+57 |     trace_dict = dict(zip(_TRACE_COLUMNS, trace_row)) if isinstance(trace_row, (list, tuple)) else trace_row
+   |
+help: Remove unused import: `..api.traces._SPAN_COLUMNS`
+
+F841 Local variable `span_rows` is assigned to but never used
+  --> src\api\evaluations.py:59:5
+   |
+57 |     trace_dict = dict(zip(_TRACE_COLUMNS, trace_row)) if isinstance(trace_row, (list, tuple)) else trace_row
+58 |
+59 |     span_rows = storage.get_spans_for_trace(req.trace_id, req.org_id)
+   |     ^^^^^^^^^
+60 |
+61 |     # Reconstruct a lightweight Trace for the eval engine
+   |
+help: Remove assignment to unused variable `span_rows`
+
+F401 [*] `typing.Any` imported but unused
+  --> src\services\alerting.py:9:20
+   |
+ 7 | import asyncio
+ 8 | from datetime import datetime
+ 9 | from typing import Any, Dict, List, Optional
+   |                    ^^^
+10 |
+11 | import httpx
+   |
+help: Remove unused import: `typing.Any`
+
+F401 [*] `..models.trace.FrameworkType` imported but unused
+  --> src\services\ingestion.py:13:5
+   |
+11 | from ..core.logging import get_logger
+12 | from ..models.trace import (
+13 |     FrameworkType,
+   |     ^^^^^^^^^^^^^
+14 |     Span,
+15 |     SpanKind,
+   |
+help: Remove unused import: `..models.trace.FrameworkType`
+
+F841 Local variable `tool` is assigned to but never used
+   --> src\storage\clickhouse.py:367:9
+    |
+365 |     def _span_to_row(span: Span) -> tuple:
+366 |         llm = span.llm_attributes
+367 |         tool = span.tool_attributes
+    |         ^^^^
+368 |         return (
+369 |             span.span_id,
+    |
+help: Remove assignment to unused variable `tool`
+
+Found 7 errors.
+[*] 4 fixable with the `--fix` option (2 hidden fixes can be enabled with the `--unsafe-fixes` option).

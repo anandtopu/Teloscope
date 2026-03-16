@@ -41,6 +41,6 @@ async def readiness_check():
 '''
 
 # Write the actual files
-import os
+import os  # noqa: E402
 
 api_dir = os.path.dirname(os.path.abspath(__file__))

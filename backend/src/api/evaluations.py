@@ -39,7 +39,6 @@ async def run_evaluation(req: RunEvalRequest) -> Dict[str, Any]:
     The trace is fetched from storage; results are persisted.
     """
     from ..storage.clickhouse import get_storage
-    from ..services.ingestion import get_ingestion_service
     from ..models.trace import Trace, SpanStatus, FrameworkType, TokenUsage
     from datetime import datetime
 
@@ -53,10 +52,10 @@ async def run_evaluation(req: RunEvalRequest) -> Dict[str, Any]:
 
     # Build minimal Trace object for evaluation
     # (in production, deserialize fully from ClickHouse)
-    from ..api.traces import _TRACE_COLUMNS, _SPAN_COLUMNS
+    from ..api.traces import _TRACE_COLUMNS
     trace_dict = dict(zip(_TRACE_COLUMNS, trace_row)) if isinstance(trace_row, (list, tuple)) else trace_row
 
-    span_rows = storage.get_spans_for_trace(req.trace_id, req.org_id)
+
 
     # Reconstruct a lightweight Trace for the eval engine
     trace = Trace(

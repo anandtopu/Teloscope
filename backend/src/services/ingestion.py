@@ -10,7 +10,6 @@ from typing import List, Optional
 
 from ..core.logging import get_logger
 from ..models.trace import (
-    FrameworkType,
     Span,
     SpanKind,
     SpanStatus,

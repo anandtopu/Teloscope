@@ -364,7 +364,7 @@ class ClickHouseStorage:
     @staticmethod
     def _span_to_row(span: Span) -> tuple:
         llm = span.llm_attributes
-        tool = span.tool_attributes
+
         return (
             span.span_id,
             span.trace_id,
