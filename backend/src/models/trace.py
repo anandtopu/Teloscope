@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 # ─── Enumerations ────────────────────────────────────────────────────────────
@@ -156,16 +156,14 @@ class Span(BaseModel):
     attributes:     Dict[str, Any] = Field(default_factory=dict)
     events:         List[SpanEvent] = Field(default_factory=list)
 
-    @field_validator("duration_ms", mode="before")
+    @model_validator(mode="before")
     @classmethod
-    def compute_duration(cls, v, info):
-        if v is not None:
-            return v
-        data = info.data
-        if data.get("start_time") and data.get("end_time"):
-            delta = data["end_time"] - data["start_time"]
-            return delta.total_seconds() * 1000
-        return None
+    def compute_duration(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if data.get("duration_ms") is None and data.get("start_time") and data.get("end_time"):
+                delta = data["end_time"] - data["start_time"]
+                data["duration_ms"] = delta.total_seconds() * 1000
+        return data
 
 
 class Trace(BaseModel):

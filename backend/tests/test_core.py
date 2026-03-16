@@ -6,7 +6,7 @@ evaluation engine, and alerting.
 from __future__ import annotations
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 # ─── PII Redaction Tests ──────────────────────────────────────────────────────
@@ -135,7 +135,7 @@ class TestTraceModels:
             trace_id="trace-001",
             name="test-span",
             kind=self.SpanKind.AGENT,
-            start_time=datetime.utcnow(),
+            start_time=datetime.now(timezone.utc),
             org_id="org-1",
             project_id="proj-1",
         )
@@ -178,7 +178,7 @@ class TestTraceModels:
             framework=self.FrameworkType.LANGCHAIN,
             org_id="org-1",
             project_id="proj-1",
-            start_time=datetime.utcnow(),
+            start_time=datetime.now(timezone.utc),
         )
         assert trace.trace_id is not None
         assert trace.total_spans == 0
@@ -198,8 +198,8 @@ class TestTraceIngestionService:
             name="test-span",
             kind=SpanKind(kind_str),
             status=SpanStatus(status_str),
-            start_time=datetime.utcnow(),
-            end_time=datetime.utcnow(),
+            start_time=datetime.now(timezone.utc),
+            end_time=datetime.now(timezone.utc),
             org_id="org-1",
             project_id="proj-1",
         )
@@ -333,7 +333,7 @@ class TestEvaluationEngine:
         from src.models.trace import Trace, FrameworkType, TokenUsage
         trace = Trace(
             name="t", agent_name="a", framework=FrameworkType.CUSTOM,
-            org_id="o", project_id="p", start_time=datetime.utcnow(),
+            org_id="o", project_id="p", start_time=datetime.now(timezone.utc),
             token_usage=TokenUsage(),
         )
         with pytest.raises(RuntimeError, match="disabled"):
