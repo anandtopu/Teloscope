@@ -1,0 +1,31 @@
+apiVersion: v2
+name: agentlens
+description: AgentLens — AI Agent Observability Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - ai
+  - observability
+  - agents
+  - llm
+  - tracing
+home: https://agentlens.io
+sources:
+  - https://github.com/your-org/agentlens
+maintainers:
+  - name: AgentLens Team
+    email: team@agentlens.io
+dependencies:
+  - name: clickhouse
+    version: "6.2.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: clickhouse.enabled
+  - name: redis
+    version: "20.0.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+  - name: kafka
+    version: "30.0.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: kafka.enabled

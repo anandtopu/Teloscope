@@ -1,0 +1,169 @@
+# AgentLens Helm Chart — Default Values
+# Override these in your own values file or with --set flags
+
+# ─── Global ────────────────────────────────────────────────────────
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# ─── API Service ───────────────────────────────────────────────────
+api:
+  enabled: true
+  image:
+    repository: agentlens/api
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  service:
+    type: ClusterIP
+    port: 8000
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  env:
+    AGENTLENS_ENV: "production"
+    PII_REDACTION_ENABLED: "true"
+    FEATURE_EVALUATIONS: "true"
+  secrets:
+    AGENTLENS_SECRET_KEY: ""       # Required: override with a strong secret
+    OPENAI_API_KEY: ""
+    ANTHROPIC_API_KEY: ""
+
+# ─── Dashboard (Frontend) ──────────────────────────────────────────
+dashboard:
+  enabled: true
+  image:
+    repository: agentlens/dashboard
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+  service:
+    type: ClusterIP
+    port: 3000
+
+# ─── Ingress ───────────────────────────────────────────────────────
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  hosts:
+    - host: agentlens.example.com
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: api
+        - path: /
+          pathType: Prefix
+          service: dashboard
+  tls:
+    - secretName: agentlens-tls
+      hosts:
+        - agentlens.example.com
+
+# ─── ClickHouse ────────────────────────────────────────────────────
+clickhouse:
+  enabled: true
+  auth:
+    username: default
+    password: ""
+    database: agentlens
+  persistence:
+    enabled: true
+    size: 100Gi
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    limits:
+      cpu: "2000m"
+      memory: "8Gi"
+
+# ─── Redis ─────────────────────────────────────────────────────────
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+
+# ─── Kafka ─────────────────────────────────────────────────────────
+kafka:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    enabled: true
+    size: 20Gi
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+# ─── MinIO (Object Storage) ────────────────────────────────────────
+minio:
+  enabled: true
+  rootUser: minioadmin
+  rootPassword: minioadmin   # Override in production!
+  buckets:
+    - name: agentlens-artifacts
+      policy: none
+  persistence:
+    enabled: true
+    size: 50Gi
+
+# ─── Prometheus / Monitoring ────────────────────────────────────────
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true          # Requires prometheus-operator CRDs
+
+# ─── Network Policy ────────────────────────────────────────────────
+networkPolicy:
+  enabled: false           # Set to true for air-gapped deployments
+
+# ─── Pod Disruption Budget ─────────────────────────────────────────
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# ─── Security Context ──────────────────────────────────────────────
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]

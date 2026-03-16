@@ -1,0 +1,17 @@
+{
+  "name": "agentlens-sdk",
+  "version": "1.0.0",
+  "description": "AgentLens AI Agent Observability SDK for Node.js",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "test": "node --test tests/",
+    "lint": "eslint ."
+  },
+  "keywords": ["ai", "agents", "observability", "tracing", "llm", "opentelemetry"],
+  "license": "MIT",
+  "engines": { "node": ">=18.0.0" },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

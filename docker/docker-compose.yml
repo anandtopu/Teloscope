@@ -1,0 +1,207 @@
+version: "3.9"
+
+# AgentLens — Self-Hosted Docker Compose Stack
+# Starts all services needed to run AgentLens locally or on a server.
+# Usage: docker compose up -d
+
+services:
+
+  # ─── AgentLens API ─────────────────────────────────────────────
+  api:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.api
+    image: agentlens/api:latest
+    container_name: agentlens-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      AGENTLENS_ENV: ${AGENTLENS_ENV:-production}
+      AGENTLENS_SECRET_KEY: ${AGENTLENS_SECRET_KEY:-change-me}
+      AGENTLENS_CORS_ORIGINS: '["http://localhost:3000"]'
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: 9000
+      CLICKHOUSE_DB: agentlens
+      REDIS_URL: redis://redis:6379/0
+      KAFKA_BROKERS: kafka:9092
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      PII_REDACTION_ENABLED: "true"
+      FEATURE_EVALUATIONS: "true"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks: [agentlens]
+
+  # ─── AgentLens Dashboard (React) ──────────────────────────────
+  dashboard:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    image: agentlens/dashboard:latest
+    container_name: agentlens-dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    depends_on:
+      - api
+    networks: [agentlens]
+
+  # ─── ClickHouse (Trace Storage) ──────────────────────────────
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: agentlens-clickhouse
+    restart: unless-stopped
+    ports:
+      - "9000:9000"    # native protocol
+      - "8123:8123"    # HTTP interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [agentlens]
+
+  # ─── Redis (Cache / Sessions) ────────────────────────────────
+  redis:
+    image: redis:7.4-alpine
+    container_name: agentlens-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [agentlens]
+
+  # ─── Kafka (Event Streaming) ─────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.7.1
+    container_name: agentlens-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks: [agentlens]
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.1
+    container_name: agentlens-kafka
+    restart: unless-stopped
+    depends_on: [zookeeper]
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:29092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    networks: [agentlens]
+
+  # ─── MinIO (Object Storage for eval artifacts) ───────────────
+  minio:
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    container_name: agentlens-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "9010:9000"   # S3 API (offset to avoid conflict with ClickHouse)
+      - "9011:9001"   # MinIO Console
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks: [agentlens]
+
+  # ─── Prometheus (Metrics) ────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: agentlens-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    networks: [agentlens]
+
+  # ─── Grafana (Visualization) ─────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.3.1
+    container_name: agentlens-grafana
+    restart: unless-stopped
+    ports:
+      - "3100:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-agentlens}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on: [prometheus]
+    networks: [agentlens]
+
+# ─── Volumes ────────────────────────────────────────────────────
+volumes:
+  clickhouse_data:
+  clickhouse_logs:
+  redis_data:
+  zookeeper_data:
+  zookeeper_logs:
+  kafka_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
+
+# ─── Network ────────────────────────────────────────────────────
+networks:
+  agentlens:
+    driver: bridge
